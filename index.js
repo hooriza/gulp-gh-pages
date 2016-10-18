@@ -1,9 +1,11 @@
 'use strict';
 
+var path = require('path');
 var git = require('./lib/git');
 var gutil = require('gulp-util');
 var Transform = require('readable-stream/transform');
 var vinylFs = require('vinyl-fs');
+var glob = require('glob');
 var wrapPromise = require('wrap-promise');
 
 /*
@@ -24,6 +26,9 @@ module.exports = function gulpGhPages(options) {
   var origin = options.origin || 'origin';
   var branch = options.branch || 'gh-pages';
   var message = options.message || 'Update ' + new Date().toISOString();
+  var remove = options.remove || [ '*' ];
+  var target = options.target || '.';
+  var cacheDir = options.cacheDir || '.publish-git-deploy';
 
   var files = [];
   var TAG;
@@ -58,7 +63,7 @@ module.exports = function gulpGhPages(options) {
 
       var newBranchCreated = false;
 
-      git.prepareRepo(options.remoteUrl, origin, options.cacheDir || '.publish')
+      git.prepareRepo(options.remoteUrl, origin, cacheDir)
       .then(function(repo) {
         gutil.log(TAG, 'Cloning repo');
         if (repo._localBranches.indexOf(branch) > -1) {
@@ -95,21 +100,36 @@ module.exports = function gulpGhPages(options) {
       })
       .then(function(repo) {
         // remove all files
+        gutil.log(TAG, 'Remove useless files');
         return wrapPromise(function(resolve, reject) {
-          repo._repo.remove('.', {r: true}, function(err) {
-            if (err) {
-              reject(err);
+          (function loop(idx) {
+            if (!remove[idx]) {
+              resolve(repo.status());
               return;
             }
-            resolve(repo.status());
-          });
+
+            glob(remove[idx], {
+              cwd: cacheDir
+            }, function(err, files) {
+              if (files.length === 0) {
+                return loop(++idx);
+              }
+              repo._repo.remove(files, {r: true}, function(err) {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                loop(++idx);
+              });
+            });
+          }(0));
         });
       })
       .then(function(repo) {
         gutil.log(TAG, 'Copying files to repository');
 
         return wrapPromise(function(resolve, reject) {
-          var destStream = vinylFs.dest(repo._repo.path)
+          var destStream = vinylFs.dest(path.join(repo._repo.path, target))
           .on('error', reject)
           .on('end', function() {
             resolve(repo);

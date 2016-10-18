@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "gift": "^0.7.0",
+    "glob": "^7.1.1",
     "gulp-util": "^3.0.7",
     "readable-stream": "^2.0.4",
     "rimraf": "^2.4.4",
