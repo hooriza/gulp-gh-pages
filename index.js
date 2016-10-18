@@ -28,7 +28,7 @@ module.exports = function gulpGhPages(options) {
   var message = options.message || 'Update ' + new Date().toISOString();
   var remove = options.remove || [ '*' ];
   var target = options.target || '.';
-  var cacheDir = options.cacheDir || '.publish-git-deploy';
+  var cacheDir = options.cacheDir || '.publish';
 
   var files = [];
   var TAG;
